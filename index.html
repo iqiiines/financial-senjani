@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Diary Senjani</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg: #f4f7f6; --white: #fff; --green: #27ae60; --red: #c0392b; --blue: #2980b9; --dark: #2c3e50; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); padding: 15px; display: flex; justify-content: center; color: #333; }
+        .container { width: 100%; max-width: 480px; background: var(--white); padding: 25px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); position: relative; }
+        
+        /* Brand Logo */
+        .app-brand { font-family: 'Georgia', serif; font-size: 26px; font-weight: bold; color: var(--blue); letter-spacing: 1px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .app-brand span { font-size: 20px; } /* Untuk icon */
+
+        #loginScreen { text-align: center; padding: 20px 0; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; font-size: 15px; }
+        .btn { background: var(--blue); color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn:hover { filter: brightness(0.9); }
+        #appScreen { display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .month-filter { background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
+        .filter-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+        .date-range-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #d0e5ee; padding-bottom: 15px; }
+        .card { background: #fdfdfd; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #eaeaea; text-align: center; }
+        .balance { font-size: 28px; font-weight: bold; }
+        .plus { color: var(--green); } .minus { color: var(--red); }
+        .list-item { display: flex; justify-content: space-between; padding: 12px; background: white; border-left: 5px solid; margin-bottom: 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); border: 1px solid #f0f0f0; }
+        .timestamp { font-size: 11px; color: #888; display: block; margin-top: 4px;}
+        .del-btn { color: #ccc; border: none; background: none; font-size: 18px; cursor: pointer; padding-left: 10px; }
+        .chart-container { position: relative; height: 180px; width: 100%; margin-bottom: 20px; display: flex; justify-content: center; align-items: center;}
+        
+        /* Modal Pengaturan */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 15px; }
+        .modal-content { background-color: #fff; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .close-modal { position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; }
+        .close-modal:hover { color: #333; }
+        .setting-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+        .setting-section label { font-size: 13px; font-weight: bold; color: #555; display: block; margin-top: 10px; }
+        .setting-section h4 { color: var(--dark); margin-bottom: 10px; }
+
+        #printHeader { display: none; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        
+        @media print {
+            body { background: #fff; padding: 0; }
+            .container { box-shadow: none; max-width: 100%; width: 100%; border: none; padding: 0; }
+            #txForm, .logout-btn, #btnPdf, .month-filter, .del-btn, .header, #langContainer, .modal { display: none !important; }
+            #printHeader { display: block; }
+            .list-item { break-inside: avoid; border: 1px solid #ddd; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div id="loginScreen">
+        <div class="app-brand" style="justify-content: center;"><span>✨</span>Senjani</div>
+        <h2 id="loginTitle" style="margin-bottom: 15px; font-size: 18px; color: #555;">Financial Diary</h2>
+        
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        
+        <button id="authBtn" class="btn" onclick="handleAuth()">Masuk</button>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ccc;">
+            <p id="authToggleText" style="font-size: 14px; margin: 0;">
+                Belum punya akun? <br><a href="javascript:void(0)" onclick="toggleAuthMode('register')" style="color: var(--blue); font-weight: bold; display: inline-block; margin-top: 8px;">Daftar di sini</a>
+            </p>
+        </div>
+
+        <p id="loginError" style="color:red; font-size:13px; margin-top:15px; display:none; background: #ffebeb; padding: 10px; border-radius: 5px;">Pesan Error</p>
+    </div>
+
+    <div id="appScreen">
+        
+        <div class="app-brand">Senjani Financial</div>
+
+        <div id="printHeader">
+            <h2 id="printReportTitle">Laporan Mutasi Financial Diary Senjani</h2>
+            <p id="printPeriodeText">Periode: -</p>
+            <p id="printFilterText">Filter: Semua</p>
+        </div>
+
+        <div class="header">
+            <h3 id="cashflowTitle">Cashflow</h3>
+            <button id="settingsBtn" class="logout-btn" onclick="openSettings()" style="width:auto; padding:6px 12px; font-size:13px; border:none; background:var(--dark); color:white; font-weight:bold; cursor:pointer; border-radius:5px;">⚙️ Pengaturan</button>
+        </div>
+
+        <div class="month-filter">
+            <div class="date-range-container">
+                <div class="filter-group">
+                    <b id="lblStartDate">Dari Tanggal:</b>
+                    <input type="date" id="startDate" onchange="fetchData()" style="width:auto; padding:5px; margin:0; border:1px solid #b9d8e5;">
+                </div>
+                <div class="filter-group">
+                    <b id="lblEndDate">Sampai Tanggal:</b>
+                    <input type="date" id="endDate" onchange="fetchData()" style="width:auto; padding:5px; margin:0; border:1px solid #b9d8e5;">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <b id="lblFilterType">Tipe Mutasi:</b>
+                <select id="typeFilter" onchange="fetchData()" style="width:auto; padding:5px; margin:0; border:1px solid #b9d8e5;">
+                    <option id="optAll" value="all">Semua / All</option>
+                    <option id="optFilterCredit" value="plus">Pemasukan (Credit)</option>
+                    <option id="optFilterDebit" value="minus">Pengeluaran (Debit)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="saldoAwalText" style="font-size:12px; color:#777; margin-bottom:5px;">Saldo Awal: Rp 0</div>
+            <div class="balance" id="totalSaldo">Rp 0</div>
+            <div style="display:flex; justify-content: space-around; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                <div><small id="pemasukanLabel">Pemasukan</small><p class="plus" id="inc">+0</p></div>
+                <div><small id="pengeluaranLabel">Pengeluaran</small><p class="minus" id="exp">-0</p></div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="cashflowChart"></canvas>
+            <p id="noChartData" style="display: none; position: absolute; color: #999; font-size: 13px;">Belum ada data</p>
+        </div>
+
+        <form id="txForm">
+            <div style="display: flex; gap: 10px;">
+                <select id="jenis" style="flex: 1;">
+                    <option id="optPlus" value="plus">Pemasukan (+)</option>
+                    <option id="optMinus" value="minus">Pengeluaran (-)</option>
+                </select>
+                <input type="number" id="jml" placeholder="Jumlah (Rp)" style="flex: 2;" required>
+            </div>
+            <input type="text" id="ket" placeholder="Keterangan Detail..." required>
+            <button id="saveBtn" type="submit" class="btn">Catat Transaksi</button>
+        </form>
+
+        <h4 id="historyTitle" style="margin-top:20px; margin-bottom: 10px;">Riwayat Transaksi</h4>
+        <div id="list"></div>
+
+        <button id="btnPdf" class="btn" style="background-color: var(--dark); margin-top: 20px;" onclick="window.print()">📄 Cetak / Simpan PDF</button>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeSettings()">&times;</span>
+            <h2 id="setMainTitle" style="color: var(--blue);">Pengaturan</h2>
+            
+            <div class="setting-section">
+                <h4 id="setAccTitle">👤 Profil & Akun</h4>
+                <label id="lblCurrentEmail">Email Saat Ini:</label>
+                <input type="text" id="currentEmail" disabled style="background:#f0f0f0; color:#777;">
+                
+                <label id="lblNewEmail">Ubah Email Baru (Opsional):</label>
+                <input type="email" id="newEmail" placeholder="Ketik email baru...">
+                
+                <label id="lblNewPass">Ubah Password Baru (Opsional):</label>
+                <input type="password" id="newPassword" placeholder="Ketik password baru...">
+                
+                <label id="lblPhone">Nomor Telepon:</label>
+                <input type="text" id="phoneNumber" placeholder="Contoh: 08123456789">
+                
+                <button class="btn" onclick="saveAccountSettings()" id="btnSaveAcc" style="margin-top: 15px;">Simpan Perubahan Akun</button>
+                <p id="accMsg" style="font-size:13px; margin-top:10px; font-weight:bold; text-align:center;"></p>
+            </div>
+
+            <div class="setting-section">
+                <h4 id="setLangTitle">🌐 Bahasa (Language)</h4>
+                <select id="langSelect" onchange="changeLang()" style="border: 2px solid var(--blue); font-weight:bold;">
+                    <option value="id">🇮🇩 Indonesia</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+            </div>
+
+            <div class="setting-section" style="text-align:center; padding-top:25px; border:none;">
+                <button class="btn" style="background:var(--red);" onclick="logout()" id="btnLogoutModal">Keluar (Logout)</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const i18n = {
+        id: {
+            loginTitle: "Financial Diary",
+            regTitle: "Daftar Akun Baru",
+            loginBtn: "Masuk",
+            regBtn: "Daftar Sekarang",
+            noAccount: "Belum punya akun? <br><a href='javascript:void(0)' onclick='toggleAuthMode(\"register\")' style='color:var(--blue); font-weight:bold; display:inline-block; margin-top:8px;'>Daftar di sini</a>",
+            hasAccount: "Sudah punya akun? <br><a href='javascript:void(0)' onclick='toggleAuthMode(\"login\")' style='color:var(--blue); font-weight:bold; display:inline-block; margin-top:8px;'>Masuk di sini</a>",
+            loginErr: "Email atau Password salah!",
+            notApproved: "Akun Anda belum di-approve oleh Admin.",
+            regSuccess: "Registrasi berhasil! Silakan cek kotak masuk/spam email Anda untuk verifikasi. Setelah itu tunggu Admin menyetujui akun.",
+            reportTitle: "Laporan Mutasi Financial Diary Senjani",
+            periodStr: "Periode: ",
+            cashflow: "Cashflow",
+            settings: "⚙️ Pengaturan",
+            lblStartDate: "Dari Tanggal:",
+            lblEndDate: "Sampai Tanggal:",
+            lblFilterType: "Tipe Mutasi:",
+            optAll: "Semua Data",
+            optFilterCredit: "Pemasukan (Credit)",
+            optFilterDebit: "Pengeluaran (Debit)",
+            saldoAwal: "Saldo Awal",
+            pemasukan: "Pemasukan",
+            pengeluaran: "Pengeluaran",
+            optPlus: "Pemasukan (+)",
+            optMinus: "Pengeluaran (-)",
+            noData: "Belum ada data",
+            noDataPeriod: "Tidak ada transaksi untuk filter ini.",
+            ketPlaceholder: "Keterangan Detail...",
+            saveBtn: "Catat Transaksi",
+            historyTitle: "Riwayat Transaksi",
+            printBtn: "📄 Cetak / Simpan PDF",
+            deletePrompt: "KEAMANAN: Masukkan password Anda untuk menghapus:",
+            deleteWrong: "Password salah!",
+            deleteSuccess: "Terhapus.",
+            // Settings Strings
+            setMainTitle: "Pengaturan",
+            setAccTitle: "👤 Profil & Akun",
+            lblCurrentEmail: "Email Saat Ini:",
+            lblNewEmail: "Ubah Email Baru (Opsional):",
+            lblNewPass: "Ubah Password Baru (Opsional):",
+            lblPhone: "Nomor Telepon:",
+            btnSaveAcc: "Simpan Perubahan Akun",
+            setLangTitle: "🌐Bahasa (Language)",
+            btnLogoutModal: "Keluar (Logout)",
+            updateSuccess: "Profil berhasil diperbarui!"
+        },
+        en: {
+            loginTitle: "Login Financial Diary",
+            regTitle: "Register New Account",
+            loginBtn: "Login",
+            regBtn: "Register Now",
+            noAccount: "Don't have an account? <br><a href='javascript:void(0)' onclick='toggleAuthMode(\"register\")' style='color:var(--blue); font-weight:bold; display:inline-block; margin-top:8px;'>Register here</a>",
+            hasAccount: "Already have an account? <br><a href='javascript:void(0)' onclick='toggleAuthMode(\"login\")' style='color:var(--blue); font-weight:bold; display:inline-block; margin-top:8px;'>Login here</a>",
+            loginErr: "Wrong Email or Password!",
+            notApproved: "Your account has not been approved by Admin.",
+            regSuccess: "Registration successful! Please verify your email inbox/spam. Wait for Admin approval.",
+            reportTitle: "Financial Diary Senjani Mutation Report",
+            periodStr: "Period: ",
+            cashflow: "Cashflow",
+            settings: "⚙️ Settings",
+            lblStartDate: "Start Date:",
+            lblEndDate: "End Date:",
+            lblFilterType: "Mutation Type:",
+            optAll: "All Data",
+            optFilterCredit: "Income (Credit)",
+            optFilterDebit: "Expense (Debit)",
+            saldoAwal: "Starting Balance",
+            pemasukan: "Income",
+            pengeluaran: "Expense",
+            optPlus: "Income (+)",
+            optMinus: "Expense (-)",
+            noData: "No data available",
+            noDataPeriod: "No transactions found for this filter.",
+            ketPlaceholder: "Transaction Details...",
+            saveBtn: "Save Transaction",
+            historyTitle: "Transaction History",
+            printBtn: "📄 Print / Save PDF",
+            deletePrompt: "SECURITY: Enter password to delete:",
+            deleteWrong: "Wrong password!",
+            deleteSuccess: "Deleted.",
+            // Settings Strings
+            setMainTitle: "Settings",
+            setAccTitle: "👤 Profile & Account",
+            lblCurrentEmail: "Current Email:",
+            lblNewEmail: "New Email (Optional):",
+            lblNewPass: "New Password (Optional):",
+            lblPhone: "Phone Number:",
+            btnSaveAcc: "Save Account Changes",
+            setLangTitle: "🌐Language",
+            btnLogoutModal: "Logout",
+            updateSuccess: "Profile updated successfully!"
+        }
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'id';
+    let authMode = 'login'; 
+
+    function toggleAuthMode(mode) {
+        authMode = mode;
+        applyLang();
+    }
+
+    function applyLang() {
+        document.getElementById('langSelect').value = currentLang;
+        const t = i18n[currentLang];
+        
+        if(authMode === 'login') {
+            document.getElementById('loginTitle').innerText = t.loginTitle;
+            document.getElementById('authBtn').innerText = t.loginBtn;
+            document.getElementById('authToggleText').innerHTML = t.noAccount;
+        } else {
+            document.getElementById('loginTitle').innerText = t.regTitle;
+            document.getElementById('authBtn').innerText = t.regBtn;
+            document.getElementById('authToggleText').innerHTML = t.hasAccount;
+        }
+
+        document.getElementById('loginError').style.display = 'none';
+        
+        document.getElementById('printReportTitle').innerText = t.reportTitle;
+        document.getElementById('cashflowTitle').innerText = t.cashflow;
+        document.getElementById('settingsBtn').innerText = t.settings;
+        document.getElementById('lblStartDate').innerText = t.lblStartDate;
+        document.getElementById('lblEndDate').innerText = t.lblEndDate;
+        document.getElementById('lblFilterType').innerText = t.lblFilterType;
+        document.getElementById('optAll').innerText = t.optAll;
+        document.getElementById('optFilterCredit').innerText = t.optFilterCredit;
+        document.getElementById('optFilterDebit').innerText = t.optFilterDebit;
+        document.getElementById('pemasukanLabel').innerText = t.pemasukan;
+        document.getElementById('pengeluaranLabel').innerText = t.pengeluaran;
+        document.getElementById('optPlus').innerText = t.optPlus;
+        document.getElementById('optMinus').innerText = t.optMinus;
+        document.getElementById('ket').placeholder = t.ketPlaceholder;
+        document.getElementById('saveBtn').innerText = t.saveBtn;
+        document.getElementById('historyTitle').innerText = t.historyTitle;
+        document.getElementById('btnPdf').innerText = t.printBtn;
+        document.getElementById('noChartData').innerText = t.noData;
+
+        // Settings Modal Text
+        document.getElementById('setMainTitle').innerText = t.setMainTitle;
+        document.getElementById('setAccTitle').innerText = t.setAccTitle;
+        document.getElementById('lblCurrentEmail').innerText = t.lblCurrentEmail;
+        document.getElementById('lblNewEmail').innerText = t.lblNewEmail;
+        document.getElementById('lblNewPass').innerText = t.lblNewPass;
+        document.getElementById('lblPhone').innerText = t.lblPhone;
+        document.getElementById('btnSaveAcc').innerText = t.btnSaveAcc;
+        document.getElementById('setLangTitle').innerText = t.setLangTitle;
+        document.getElementById('btnLogoutModal').innerText = t.btnLogoutModal;
+        
+        if (document.getElementById('appScreen').style.display === 'block') { fetchData(); }
+    }
+
+    function changeLang() {
+        currentLang = document.getElementById('langSelect').value;
+        localStorage.setItem('lang', currentLang);
+        applyLang();
+    }
+
+    const SB_URL = 'https://limmovgipztyppputmrh.supabase.co';
+    const SB_KEY = 'sb_publishable_c7rkS8EJ4RvA4sEOrh6Nkw_l67mDCPv';
+    const sbClient = supabase.createClient(SB_URL, SB_KEY);
+
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const typeFilter = document.getElementById('typeFilter');
+    
+    const now = new Date();
+    startDateInput.value = now.toISOString().slice(0, 8) + '01'; 
+    endDateInput.value = now.toISOString().slice(0, 10);
+
+    let myChart = null;
+
+    async function checkUser() {
+        applyLang();
+        const { data: { session } } = await sbClient.auth.getSession();
+        if (session) {
+            const { data: profile } = await sbClient.from('profiles').select('is_approved').eq('id', session.user.id).single();
+            if (profile && profile.is_approved === true) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appScreen').style.display = 'block';
+                fetchData();
+            } else {
+                await sbClient.auth.signOut();
+                document.getElementById('loginError').innerText = i18n[currentLang].notApproved;
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+    }
+    checkUser();
+
+    async function handleAuth() {
+        if (authMode === 'login') await login();
+        else await register();
+    }
+
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const { error } = await sbClient.auth.signInWithPassword({ email, password });
+        if (error) {
+            document.getElementById('loginError').innerText = i18n[currentLang].loginErr;
+            document.getElementById('loginError').style.display = 'block';
+        } else location.reload();
+    }
+
+    async function register() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const { error } = await sbClient.auth.signUp({ email, password });
+        if (error) {
+            document.getElementById('loginError').innerText = "Error: " + error.message;
+            document.getElementById('loginError').style.display = 'block';
+        } else {
+            alert(i18n[currentLang].regSuccess);
+            toggleAuthMode('login');
+            document.getElementById('password').value = '';
+        }
+    }
+
+    async function logout() { await sbClient.auth.signOut(); location.reload(); }
+
+    // --- FITUR PENGATURAN MODAL ---
+    async function openSettings() {
+        const { data: { user } } = await sbClient.auth.getUser();
+        if(user) {
+            document.getElementById('currentEmail').value = user.email;
+            const { data } = await sbClient.from('profiles').select('phone').eq('id', user.id).single();
+            document.getElementById('phoneNumber').value = (data && data.phone) ? data.phone : '';
+        }
+        document.getElementById('accMsg').innerText = '';
+        document.getElementById('settingsModal').style.display = 'flex';
+    }
+
+    function closeSettings() {
+        document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    async function saveAccountSettings() {
+        const { data: { user } } = await sbClient.auth.getUser();
+        const newEmail = document.getElementById('newEmail').value;
+        const newPass = document.getElementById('newPassword').value;
+        const newPhone = document.getElementById('phoneNumber').value;
+        const msgEl = document.getElementById('accMsg');
+        
+        msgEl.innerText = "Menyimpan...";
+        msgEl.style.color = "var(--blue)";
+
+        try {
+            // Update Auth (Email/Password)
+            let updates = {};
+            if(newEmail) updates.email = newEmail;
+            if(newPass) updates.password = newPass;
+            if(Object.keys(updates).length > 0) {
+                const { error: authErr } = await sbClient.auth.updateUser(updates);
+                if(authErr) throw authErr;
+            }
+
+            // Update Database Profile (Phone)
+            const { error: dbErr } = await sbClient.from('profiles').update({ phone: newPhone }).eq('id', user.id);
+            if(dbErr) throw dbErr;
+
+            msgEl.innerText = i18n[currentLang].updateSuccess;
+            msgEl.style.color = "var(--green)";
+            
+            // Bersihkan field form
+            document.getElementById('newEmail').value = '';
+            document.getElementById('newPassword').value = '';
+
+            // Jika ubah email, beritahu user untuk cek inbox
+            if(newEmail) {
+                alert("Anda mengubah email. Silakan cek kotak masuk email baru dan lama Anda untuk konfirmasi.");
+            }
+        } catch (err) {
+            msgEl.innerText = "Error: " + err.message;
+            msgEl.style.color = "var(--red)";
+        }
+    }
+    // -----------------------------
+
+    function renderChart(income, expense) {
+        const t = i18n[currentLang];
+        const ctx = document.getElementById('cashflowChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        if (income === 0 && expense === 0) { document.getElementById('noChartData').style.display = 'block'; return; }
+        document.getElementById('noChartData').style.display = 'none';
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [t.pemasukan, t.pengeluaran],
+                datasets: [{ data: [income, expense], backgroundColor: ['#27ae60', '#c0392b'], borderWidth: 2 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    async function fetchData() {
+        const t = i18n[currentLang];
+        const { data, error } = await sbClient.from('transaksi').select('*').order('created_at', { ascending: false });
+        if (error) return;
+
+        const startVal = startDateInput.value;
+        const endVal = endDateInput.value;
+        const selType = typeFilter.value;
+        
+        const formatTglStr = (dateString) => {
+            if(!dateString) return "-";
+            return new Date(dateString).toLocaleString(currentLang==='id'?'id-ID':'en-US', {day:'numeric', month:'short', year:'numeric'});
+        };
+        document.getElementById('printPeriodeText').innerText = `${t.periodStr} ${formatTglStr(startVal)} - ${formatTglStr(endVal)}`;
+        document.getElementById('printFilterText').innerText = "Filter: " + (selType==='all' ? t.optAll : (selType==='plus' ? t.optFilterCredit : t.optFilterDebit));
+
+        let sAwal = 0, incTotal = 0, expTotal = 0;
+        const listHtml = document.getElementById('list');
+        listHtml.innerHTML = '';
+        let adaDataDitampilkan = false;
+
+        if (data) {
+            data.forEach(tr => {
+                const trDate = tr.created_at.slice(0, 10);
+                const amt = parseFloat(tr.jumlah);
+                
+                if (trDate < startVal) {
+                    tr.jenis === 'plus' ? sAwal += amt : sAwal -= amt;
+                } else if (trDate >= startVal && trDate <= endVal) {
+                    tr.jenis === 'plus' ? incTotal += amt : expTotal += amt;
+                    
+                    if (selType === 'all' || selType === tr.jenis) {
+                        adaDataDitampilkan = true;
+                        const dateStr = new Date(tr.created_at).toLocaleString(currentLang==='id'?'id-ID':'en-US', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+                        listHtml.innerHTML += `
+                            <div class="list-item" style="border-left-color:${tr.jenis === 'plus' ? '#27ae60' : '#c0392b'}">
+                                <div><b>${tr.keterangan}</b><span class="timestamp">${dateStr}</span></div>
+                                <div style="display:flex; align-items:center;">
+                                    <span class="${tr.jenis}" style="font-weight:bold;">Rp ${amt.toLocaleString('id-ID')}</span>
+                                    <button class="del-btn" onclick="hapus(${tr.id})">✖</button>
+                                </div>
+                            </div>`;
+                    }
+                }
+            });
+        }
+
+        if (!adaDataDitampilkan) listHtml.innerHTML = `<p style="text-align:center; color:#999; font-size:13px; margin: 20px 0;">${t.noDataPeriod}</p>`;
+
+        document.getElementById('saldoAwalText').innerText = `${t.saldoAwal}: Rp ${sAwal.toLocaleString('id-ID')}`;
+        document.getElementById('totalSaldo').innerText = `Rp ${(sAwal + incTotal - expTotal).toLocaleString('id-ID')}`;
+        document.getElementById('inc').innerText = `+Rp ${incTotal.toLocaleString('id-ID')}`;
+        document.getElementById('exp').innerText = `-Rp ${expTotal.toLocaleString('id-ID')}`;
+
+        renderChart(incTotal, expTotal);
+    }
+
+    document.getElementById('txForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const { error } = await sbClient.from('transaksi').insert([{ keterangan: ket.value, jumlah: jml.value, jenis: jenis.value }]);
+        if (!error) { e.target.reset(); fetchData(); }
+    };
+
+    async function hapus(id) {
+        const t = i18n[currentLang];
+        const pass = prompt(t.deletePrompt);
+        if (!pass) return;
+        const { data: { session } } = await sbClient.auth.getSession();
+        const { error } = await sbClient.auth.signInWithPassword({ email: session.user.email, password: pass });
+        if (error) { alert(t.deleteWrong); return; }
+        await sbClient.from('transaksi').delete().eq('id', id); 
+        alert(t.deleteSuccess);
+        fetchData(); 
+    }
+</script>
+</body>
+</html>
