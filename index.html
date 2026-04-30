@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Diary Senjani</title>
+    <title>Senjani Financial Diary</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -65,15 +65,15 @@
         <input type="email" id="email" placeholder="Email" required>
         <input type="password" id="password" placeholder="Password" required>
         
-        <button id="authBtn" class="btn" onclick="handleAuth()">Masuk</button>
+        <button id="authBtn" class="btn" onclick="handleAuth()">Login</button>
         
         <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px dashed #ccc;">
             <p id="authToggleText" style="font-size: 14px; margin: 0;">
-                Belum punya akun? <br><a href="javascript:void(0)" onclick="toggleAuthMode('register')" style="color: var(--blue); font-weight: bold; display: inline-block; margin-top: 8px;">Daftar di sini</a>
+                Don't have an account? <br><a href="javascript:void(0)" onclick="toggleAuthMode('register')" style="color: var(--blue); font-weight: bold; display: inline-block; margin-top: 8px;">Register here</a>
             </p>
         </div>
 
-        <p id="loginError" style="color:red; font-size:13px; margin-top:15px; display:none; background: #ffebeb; padding: 10px; border-radius: 5px;">Pesan Error</p>
+        <p id="loginError" style="color:red; font-size:13px; margin-top:15px; display:none; background: #ffebeb; padding: 10px; border-radius: 5px;">Error Message</p>
     </div>
 
     <div id="appScreen">
@@ -81,103 +81,103 @@
         <div class="app-brand">Senjani Financial</div>
 
         <div id="printHeader">
-            <h2 id="printReportTitle">Laporan Mutasi Financial Diary Senjani</h2>
-            <p id="printPeriodeText">Periode: -</p>
-            <p id="printFilterText">Filter: Semua</p>
+            <h2 id="printReportTitle">Senjani Financial Diary Mutation Report</h2>
+            <p id="printPeriodeText">Period: -</p>
+            <p id="printFilterText">Filter: All</p>
         </div>
 
         <div class="header">
             <h3 id="cashflowTitle">Cashflow</h3>
-            <button id="settingsBtn" class="logout-btn" onclick="openSettings()" style="width:auto; padding:6px 12px; font-size:13px; border:none; background:var(--dark); color:white; font-weight:bold; cursor:pointer; border-radius:5px;">⚙️ Pengaturan</button>
+            <button id="settingsBtn" class="logout-btn" onclick="openSettings()" style="width:auto; padding:6px 12px; font-size:13px; border:none; background:var(--dark); color:white; font-weight:bold; cursor:pointer; border-radius:5px;">⚙️ Settings</button>
         </div>
 
         <div class="month-filter">
             <div class="date-range-container">
                 <div class="filter-group">
-                    <b id="lblStartDate">Dari Tanggal:</b>
+                    <b id="lblStartDate">Start Date:</b>
                     <input type="date" id="startDate" onchange="fetchData()" style="width:auto; padding:5px; margin:0; border:1px solid #b9d8e5;">
                 </div>
                 <div class="filter-group">
-                    <b id="lblEndDate">Sampai Tanggal:</b>
+                    <b id="lblEndDate">End Date:</b>
                     <input type="date" id="endDate" onchange="fetchData()" style="width:auto; padding:5px; margin:0; border:1px solid #b9d8e5;">
                 </div>
             </div>
 
             <div class="filter-group">
-                <b id="lblFilterType">Tipe Mutasi:</b>
+                <b id="lblFilterType">Transaction Type:</b>
                 <select id="typeFilter" onchange="fetchData()" style="width:auto; padding:5px; margin:0; border:1px solid #b9d8e5;">
-                    <option id="optAll" value="all">Semua / All</option>
-                    <option id="optFilterCredit" value="plus">Pemasukan (Credit)</option>
-                    <option id="optFilterDebit" value="minus">Pengeluaran (Debit)</option>
+                    <option id="optAll" value="all">All</option>
+                    <option id="optFilterCredit" value="plus">Income (Credit)</option>
+                    <option id="optFilterDebit" value="minus">Expense (Debit)</option>
                 </select>
             </div>
         </div>
 
         <div class="card">
-            <div id="saldoAwalText" style="font-size:12px; color:#777; margin-bottom:5px;">Saldo Awal: Rp 0</div>
+            <div id="saldoAwalText" style="font-size:12px; color:#777; margin-bottom:5px;">Starting Balance: Rp 0</div>
             <div class="balance" id="totalSaldo">Rp 0</div>
             <div style="display:flex; justify-content: space-around; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                <div><small id="pemasukanLabel">Pemasukan</small><p class="plus" id="inc">+0</p></div>
-                <div><small id="pengeluaranLabel">Pengeluaran</small><p class="minus" id="exp">-0</p></div>
+                <div><small id="pemasukanLabel">Income</small><p class="plus" id="inc">+0</p></div>
+                <div><small id="pengeluaranLabel">Expense</small><p class="minus" id="exp">-0</p></div>
             </div>
         </div>
 
         <div class="chart-container">
             <canvas id="cashflowChart"></canvas>
-            <p id="noChartData" style="display: none; position: absolute; color: #999; font-size: 13px;">Belum ada data</p>
+            <p id="noChartData" style="display: none; position: absolute; color: #999; font-size: 13px;">No data available</p>
         </div>
 
         <form id="txForm">
             <div style="display: flex; gap: 10px;">
                 <select id="jenis" style="flex: 1;">
-                    <option id="optPlus" value="plus">Pemasukan (+)</option>
-                    <option id="optMinus" value="minus">Pengeluaran (-)</option>
+                    <option id="optPlus" value="plus">Income (+)</option>
+                    <option id="optMinus" value="minus">Expense (-)</option>
                 </select>
-                <input type="number" id="jml" placeholder="Jumlah (Rp)" style="flex: 2;" required>
+                <input type="number" id="jml" placeholder="Amount (Rp)" style="flex: 2;" required>
             </div>
-            <input type="text" id="ket" placeholder="Keterangan Detail..." required>
-            <button id="saveBtn" type="submit" class="btn">Catat Transaksi</button>
+            <input type="text" id="ket" placeholder="Transaction Details..." required>
+            <button id="saveBtn" type="submit" class="btn">Save Transaction</button>
         </form>
 
-        <h4 id="historyTitle" style="margin-top:20px; margin-bottom: 10px;">Riwayat Transaksi</h4>
+        <h4 id="historyTitle" style="margin-top:20px; margin-bottom: 10px;">Transaction History</h4>
         <div id="list"></div>
 
-        <button id="btnPdf" class="btn" style="background-color: var(--dark); margin-top: 20px;" onclick="window.print()">📄 Cetak / Simpan PDF</button>
+        <button id="btnPdf" class="btn" style="background-color: var(--dark); margin-top: 20px;" onclick="window.print()">📄 Print / Save PDF</button>
     </div>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeSettings()">&times;</span>
-            <h2 id="setMainTitle" style="color: var(--blue);">Pengaturan</h2>
+            <h2 id="setMainTitle" style="color: var(--blue);">Settings</h2>
             
             <div class="setting-section">
-                <h4 id="setAccTitle">👤 Profil & Akun</h4>
-                <label id="lblCurrentEmail">Email Saat Ini:</label>
+                <h4 id="setAccTitle">👤 Profile & Account</h4>
+                <label id="lblCurrentEmail">Current Email:</label>
                 <input type="text" id="currentEmail" disabled style="background:#f0f0f0; color:#777;">
                 
-                <label id="lblNewEmail">Ubah Email Baru (Opsional):</label>
-                <input type="email" id="newEmail" placeholder="Ketik email baru...">
+                <label id="lblNewEmail">New Email (Optional):</label>
+                <input type="email" id="newEmail" placeholder="Type new email...">
                 
-                <label id="lblNewPass">Ubah Password Baru (Opsional):</label>
-                <input type="password" id="newPassword" placeholder="Ketik password baru...">
+                <label id="lblNewPass">New Password (Optional):</label>
+                <input type="password" id="newPassword" placeholder="Type new password...">
                 
-                <label id="lblPhone">Nomor Telepon:</label>
-                <input type="text" id="phoneNumber" placeholder="Contoh: 08123456789">
+                <label id="lblPhone">Phone Number:</label>
+                <input type="text" id="phoneNumber" placeholder="Example: 08123456789">
                 
-                <button class="btn" onclick="saveAccountSettings()" id="btnSaveAcc" style="margin-top: 15px;">Simpan Perubahan Akun</button>
+                <button class="btn" onclick="saveAccountSettings()" id="btnSaveAcc" style="margin-top: 15px;">Save Account Changes</button>
                 <p id="accMsg" style="font-size:13px; margin-top:10px; font-weight:bold; text-align:center;"></p>
             </div>
 
             <div class="setting-section">
-                <h4 id="setLangTitle">🌐 Bahasa (Language)</h4>
+                <h4 id="setLangTitle">🌐 Language</h4>
                 <select id="langSelect" onchange="changeLang()" style="border: 2px solid var(--blue); font-weight:bold;">
-                    <option value="id">🇮🇩 Indonesia</option>
                     <option value="en">🇬🇧 English</option>
+                    <option value="id">🇮🇩 Indonesia</option>
                 </select>
             </div>
 
             <div class="setting-section" style="text-align:center; padding-top:25px; border:none;">
-                <button class="btn" style="background:var(--red);" onclick="logout()" id="btnLogoutModal">Keluar (Logout)</button>
+                <button class="btn" style="background:var(--red);" onclick="logout()" id="btnLogoutModal">Logout</button>
             </div>
         </div>
     </div>
@@ -220,7 +220,6 @@
             deletePrompt: "KEAMANAN: Masukkan password Anda untuk menghapus:",
             deleteWrong: "Password salah!",
             deleteSuccess: "Terhapus.",
-            // Settings Strings
             setMainTitle: "Pengaturan",
             setAccTitle: "👤 Profil & Akun",
             lblCurrentEmail: "Email Saat Ini:",
@@ -233,7 +232,7 @@
             updateSuccess: "Profil berhasil diperbarui!"
         },
         en: {
-            loginTitle: "Login Financial Diary",
+            loginTitle: "Financial Diary Login",
             regTitle: "Register New Account",
             loginBtn: "Login",
             regBtn: "Register Now",
@@ -241,14 +240,14 @@
             hasAccount: "Already have an account? <br><a href='javascript:void(0)' onclick='toggleAuthMode(\"login\")' style='color:var(--blue); font-weight:bold; display:inline-block; margin-top:8px;'>Login here</a>",
             loginErr: "Wrong Email or Password!",
             notApproved: "Your account has not been approved by Admin.",
-            regSuccess: "Registration successful! Please verify your email inbox/spam. Wait for Admin approval.",
-            reportTitle: "Financial Diary Senjani Mutation Report",
+            regSuccess: "Registration successful! Please check your email inbox/spam to verify. Then wait for Admin approval.",
+            reportTitle: "Senjani Financial Diary Mutation Report",
             periodStr: "Period: ",
             cashflow: "Cashflow",
             settings: "⚙️ Settings",
             lblStartDate: "Start Date:",
             lblEndDate: "End Date:",
-            lblFilterType: "Mutation Type:",
+            lblFilterType: "Transaction Type:",
             optAll: "All Data",
             optFilterCredit: "Income (Credit)",
             optFilterDebit: "Expense (Debit)",
@@ -265,8 +264,7 @@
             printBtn: "📄 Print / Save PDF",
             deletePrompt: "SECURITY: Enter password to delete:",
             deleteWrong: "Wrong password!",
-            deleteSuccess: "Deleted.",
-            // Settings Strings
+            deleteSuccess: "Deleted successfully.",
             setMainTitle: "Settings",
             setAccTitle: "👤 Profile & Account",
             lblCurrentEmail: "Current Email:",
@@ -274,13 +272,13 @@
             lblNewPass: "New Password (Optional):",
             lblPhone: "Phone Number:",
             btnSaveAcc: "Save Account Changes",
-            setLangTitle: "🌐Language",
+            setLangTitle: "🌐 Language",
             btnLogoutModal: "Logout",
             updateSuccess: "Profile updated successfully!"
         }
     };
 
-    let currentLang = localStorage.getItem('lang') || 'id';
+    let currentLang = localStorage.getItem('lang') || 'en'; // Default diubah menjadi Inggris
     let authMode = 'login'; 
 
     function toggleAuthMode(mode) {
@@ -406,7 +404,7 @@
 
     async function logout() { await sbClient.auth.signOut(); location.reload(); }
 
-    // --- FITUR PENGATURAN MODAL ---
+    // --- SETTINGS MODAL FEATURES ---
     async function openSettings() {
         const { data: { user } } = await sbClient.auth.getUser();
         if(user) {
@@ -429,7 +427,7 @@
         const newPhone = document.getElementById('phoneNumber').value;
         const msgEl = document.getElementById('accMsg');
         
-        msgEl.innerText = "Menyimpan...";
+        msgEl.innerText = "Saving...";
         msgEl.style.color = "var(--blue)";
 
         try {
@@ -449,13 +447,13 @@
             msgEl.innerText = i18n[currentLang].updateSuccess;
             msgEl.style.color = "var(--green)";
             
-            // Bersihkan field form
+            // Clear form fields
             document.getElementById('newEmail').value = '';
             document.getElementById('newPassword').value = '';
 
-            // Jika ubah email, beritahu user untuk cek inbox
+            // If email is changed, notify user to check inbox
             if(newEmail) {
-                alert("Anda mengubah email. Silakan cek kotak masuk email baru dan lama Anda untuk konfirmasi.");
+                alert("You have changed your email. Please check your new and old email inboxes to confirm.");
             }
         } catch (err) {
             msgEl.innerText = "Error: " + err.message;
