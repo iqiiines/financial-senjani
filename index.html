@@ -278,7 +278,7 @@
         }
     };
 
-    let currentLang = localStorage.getItem('lang') || 'en'; // Default diubah menjadi Inggris
+    let currentLang = localStorage.getItem('lang') || 'en';
     let authMode = 'login'; 
 
     function toggleAuthMode(mode) {
@@ -535,10 +535,60 @@
         renderChart(incTotal, expTotal);
     }
 
+    // --- FUNGSI PENGIRIMAN TELEGRAM ---
+    async function sendToTelegram(keterangan, jumlah, jenis) {
+        const BOT_TOKEN = '8610664261:AAH0MEmlqNm-jtEMU38T30iX1jlAjo26UyU'; 
+        
+        // Chat ID Anda
+        const CHAT_ID = '1149361420'; 
+        
+        const typeText = jenis === 'plus' ? '🟢 Pemasukan' : '🔴 Pengeluaran';
+        const amountText = `Rp ${parseFloat(jumlah).toLocaleString('id-ID')}`;
+        const text = `💸 *Transaksi Baru!*\n\n*Jenis:* ${typeText}\n*Jumlah:* ${amountText}\n*Keterangan:* ${keterangan}`;
+
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: CHAT_ID,
+                    text: text,
+                    parse_mode: 'Markdown'
+                })
+            });
+        } catch (err) {
+            console.error("Gagal mengirim notifikasi ke Telegram:", err);
+        }
+    }
+
+    // --- EVENT SUBMIT FORM TERBARU ---
     document.getElementById('txForm').onsubmit = async (e) => {
         e.preventDefault();
-        const { error } = await sbClient.from('transaksi').insert([{ keterangan: ket.value, jumlah: jml.value, jenis: jenis.value }]);
-        if (!error) { e.target.reset(); fetchData(); }
+        
+        // Simpan nilai input ke variabel sebelum di-reset
+        const ketVal = document.getElementById('ket').value;
+        const jmlVal = document.getElementById('jml').value;
+        const jenisVal = document.getElementById('jenis').value;
+
+        // Simpan data ke Supabase
+        const { error } = await sbClient.from('transaksi').insert([{ 
+            keterangan: ketVal, 
+            jumlah: jmlVal, 
+            jenis: jenisVal 
+        }]);
+
+        if (!error) { 
+            // Panggil fungsi telegram setelah berhasil di-save
+            await sendToTelegram(ketVal, jmlVal, jenisVal);
+            
+            e.target.reset(); 
+            fetchData(); 
+        } else {
+            alert("Gagal menyimpan transaksi!");
+            console.error(error);
+        }
     };
 
     async function hapus(id) {
