@@ -550,7 +550,7 @@
         const amountText = `Rp ${parseFloat(jumlah).toLocaleString('id-ID')}`;
         
         // Teks notifikasi yang mencakup Waktu dan Saldo Akhir
-        const text = *Transaksi Baru!*\n\n*Waktu:* ${timestamp}\n*Jenis:* ${typeText}\n*Jumlah:* ${amountText}\n*Keterangan:* ${keterangan}\n\n💰 *Saldo Akhir:* ${saldoAkhir}`;
+        const text = `*Transaksi Baru!*\n\n*Waktu:* ${timestamp}\n*Jenis:* ${typeText}\n*Jumlah:* ${amountText}\n*Keterangan:* ${keterangan}\n\n💰 *Saldo Akhir:* ${saldoAkhir}`;
 
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
