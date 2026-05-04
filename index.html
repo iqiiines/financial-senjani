@@ -535,16 +535,22 @@
         renderChart(incTotal, expTotal);
     }
 
-    // --- FUNGSI PENGIRIMAN TELEGRAM ---
-    async function sendToTelegram(keterangan, jumlah, jenis) {
+    // --- FUNGSI PENGIRIMAN TELEGRAM (Dengan Waktu & Saldo Akhir) ---
+    async function sendToTelegram(keterangan, jumlah, jenis, saldoAkhir) {
         const BOT_TOKEN = '8610664261:AAH0MEmlqNm-jtEMU38T30iX1jlAjo26UyU'; 
-        
-        // Chat ID Anda
         const CHAT_ID = '1149361420'; 
         
-        const typeText = jenis === 'plus' ? '🟢 Pemasukan' : '🔴 Pengeluaran';
+        // Buat format waktu (Timestamp) yang rapi
+        const timestamp = new Date().toLocaleString('id-ID', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        const typeText = jenis === 'plus' ? 'Pemasukan' : 'Pengeluaran';
         const amountText = `Rp ${parseFloat(jumlah).toLocaleString('id-ID')}`;
-        const text = `💸 *Transaksi Baru!*\n\n*Jenis:* ${typeText}\n*Jumlah:* ${amountText}\n*Keterangan:* ${keterangan}`;
+        
+        // Teks notifikasi yang mencakup Waktu dan Saldo Akhir
+        const text = *Transaksi Baru!*\n\n*Waktu:* ${timestamp}\n*Jenis:* ${typeText}\n*Jumlah:* ${amountText}\n*Keterangan:* ${keterangan}\n\n💰 *Saldo Akhir:* ${saldoAkhir}`;
 
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
@@ -572,7 +578,7 @@
         const jmlVal = document.getElementById('jml').value;
         const jenisVal = document.getElementById('jenis').value;
 
-        // Simpan data ke Supabase
+        // Simpan data ke Supabase terlebih dahulu
         const { error } = await sbClient.from('transaksi').insert([{ 
             keterangan: ketVal, 
             jumlah: jmlVal, 
@@ -580,11 +586,16 @@
         }]);
 
         if (!error) { 
-            // Panggil fungsi telegram setelah berhasil di-save
-            await sendToTelegram(ketVal, jmlVal, jenisVal);
-            
             e.target.reset(); 
-            fetchData(); 
+            
+            // Tunggu data terbaru diambil dan UI (termasuk Saldo Akhir) selesai diupdate
+            await fetchData(); 
+            
+            // Ambil nominal Saldo Akhir dari layar UI yang baru saja diperbarui
+            const saldoAkhir = document.getElementById('totalSaldo').innerText;
+
+            // Panggil fungsi telegram dengan data lengkap
+            await sendToTelegram(ketVal, jmlVal, jenisVal, saldoAkhir);
         } else {
             alert("Gagal menyimpan transaksi!");
             console.error(error);
